@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <title>👹 لعبة الومبس 👹</title>
+  <style>
+    body {
+      direction: rtl;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-color: #ac77a2;
+    }
+
+    h1 {
+      margin: 20px;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(4, 80px);
+      grid-template-rows: repeat(4, 80px);
+      gap: 4px;
+    }
+
+    .cell {
+      width: 80px;
+      height: 80px;
+      background-color: #ccc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      cursor: pointer;
+    }
+
+    #message {
+      position: fixed;
+      top: 50%;
+      transform: translateY(-50%);
+      background-color: #fff;
+      border: 2px solid #444;
+      padding: 20px;
+      font-size: 22px;
+      text-align: center;
+      display: none;
+      z-index: 999;
+    }
+
+    #revealBtn {
+      margin-top: 15px;
+      padding: 10px 20px;
+      font-size: 20px;
+      cursor: pointer;
+      background-color: #0b77a200;
+      color: white;
+      border: none;
+      border-radius: 6px;
+    }
+
+    #map {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border: 2px solid #333;
+      padding: 20px;
+      z-index: 999;
+      display: none;
+    }
+
+    #mapGrid {
+      display: grid;
+      grid-template-columns: repeat(4, 60px);
+      grid-template-rows: repeat(4, 60px);
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+
+    .mapCell {
+      width: 60px;
+      height: 60px;
+      background-color: #ddd;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+    }
+
+    #closeMap {
+      background-color: red;
+      color: white;
+      border: none;
+      padding: 6px 10px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>لعبة الومبس </h1>
+
+  <div id="board"></div>
+  <button id="revealBtn">❗</button>
+
+  <div id="message"></div>
+
+  <div id="map">
+    <div id="mapGrid"></div>
+    <button id="closeMap">✖️ إغلاق</button>
+  </div>
+
+  <script>
+    const board = document.getElementById("board");
+    const messageBox = document.getElementById("message");
+    const revealBtn = document.getElementById("revealBtn");
+    const mapDiv = document.getElementById("map");
+    const mapGrid = document.getElementById("mapGrid");
+    const closeMap = document.getElementById("closeMap");
+
+    const gridSize = 4;
+    const agent = { x: 0, y: 0 };
+
+    const pits = [
+      [1, 1], [2, 3], [3, 0], [0, 3]
+    ];
+    const wumpus = [1, 2];
+    const gold = [2, 1];
+
+    function showMessage(text) {
+      messageBox.innerText = text;
+      messageBox.style.display = "block";
+      setTimeout(() => messageBox.style.display = "none", 2500);
+    }
+
+    function isAdjacent(x, y, target) {
+      return (
+        (x === target[0] && Math.abs(y - target[1]) === 1) ||
+        (y === target[1] && Math.abs(x - target[0]) === 1)
+      );
+    }
+
+    function renderBoard() {
+      board.innerHTML = "";
+      for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+          const cell = document.createElement("div");
+          cell.className = "cell";
+          cell.dataset.x = x;
+          cell.dataset.y = y;
+
+          if (agent.x === x && agent.y === y) {
+            cell.textContent = "🤖";
+          }
+
+          cell.onclick = () => {
+            const dx = Math.abs(agent.x - x);
+            const dy = Math.abs(agent.y - y);
+            if (dx + dy === 1) {
+              agent.x = x;
+              agent.y = y;
+              checkCell();
+              renderBoard();
+            }
+          };
+
+          board.appendChild(cell);
+        }
+      }
+    }
+
+    function checkCell() {
+      const { x, y } = agent;
+      if (x === wumpus[0] && y === wumpus[1]) {
+        showMessage("💀 الوحش أكلك! الله يرحمك");
+        disableGame();
+      } else if (pits.some(p => p[0] === x && p[1] === y)) {
+        showMessage("🕳️ طحت في حفرة... انتهت اللعبة!");
+        disableGame();
+      } else if (x === gold[0] && y === gold[1]) {
+        showMessage("🎉 حصلت الذهب! ارجع بسرعة!");
+      } else {
+        let hints = [];
+        if (isAdjacent(x, y, wumpus)) hints.push("😷 في ريحة وحش قريبة.. انتبه!");
+        if (pits.some(p => isAdjacent(x, y, p))) hints.push("❗ في نسيم... يمكن حفرة قريبة");
+
+        if (hints.length > 0) showMessage(hints.join("\n"));
+      }
+    }
+
+    function disableGame() {
+      document.querySelectorAll(".cell").forEach(cell => {
+        cell.onclick = null;
+      });
+    }
+
+    function renderMap() {
+      mapGrid.innerHTML = "";
+      for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+          const cell = document.createElement("div");
+          cell.className = "mapCell";
+
+          if (x === agent.x && y === agent.y) cell.textContent = "🤖";
+          else if (x === wumpus[0] && y === wumpus[1]) cell.textContent = "👹";
+          else if (pits.some(p => p[0] === x && p[1] === y)) cell.textContent = "🕳️";
+          else if (x === gold[0] && y === gold[1]) cell.textContent = "💰";
+          else cell.textContent = "";
+
+          mapGrid.appendChild(cell);
+        }
+      }
+    }
+
+    revealBtn.onclick = () => {
+      renderMap();
+      mapDiv.style.display = "block";
+    };
+
+    closeMap.onclick = () => {
+      mapDiv.style.display = "none";
+    };
+
+    renderBoard();
+  </script>
+</body>
+</html>
